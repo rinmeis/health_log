@@ -1,0 +1,808 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,viewport-fit=cover">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="default">
+<meta name="apple-mobile-web-app-title" content="体調管理">
+<title>体調管理</title>
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@tabler/icons-webfont@latest/dist/tabler-icons.min.css">
+<style>
+@import url('https://fonts.googleapis.com/css2?family=Noto+Sans+JP:wght@400;500&display=swap');
+*{box-sizing:border-box;margin:0;padding:0;-webkit-tap-highlight-color:transparent}
+:root{
+  --bg:#fff;--bg2:#f6f6f2;--bg3:#eeecea;
+  --text:#1a1a1a;--text2:#666;--text3:#aaa;
+  --border:rgba(0,0,0,0.09);--border2:rgba(0,0,0,0.18);
+  --accent:#1a1a1a;--green:#1d9e75;--red:#e24b4a;--blue:#378add;--today-frame:#7fd99a;
+  --c-temp:#BA7517;--c-cond:#378add;--c-hl:#e24b4a;
+  --r:10px;--rl:16px;
+  --safe-bottom: env(safe-area-inset-bottom, 0px);
+  --safe-top:    env(safe-area-inset-top,    0px);
+}
+/* ── iOS Safari 全般対応 ── */
+html{
+  height: -webkit-fill-available;
+  overscroll-behavior: none;
+}
+body{
+  font-family:'Noto Sans JP',sans-serif;
+  background:var(--bg3);color:var(--text);
+  min-height:100vh;
+  min-height:-webkit-fill-available;
+  display:flex;justify-content:center;
+  overscroll-behavior:none;
+  -webkit-text-size-adjust:100%;
+}
+.app{
+  width:100%;max-width:430px;background:var(--bg);
+  min-height:100vh;min-height:-webkit-fill-available;
+  display:flex;flex-direction:column;
+  padding-bottom: var(--safe-bottom);
+}
+.modal-sheet-inner,#view-month{-webkit-overflow-scrolling:touch}
+input,select,textarea{
+  font-size:16px;
+  -webkit-appearance:none;
+  appearance:none;
+  border-radius:0;
+}
+
+/* ── Header ── */
+.header{padding:12px 16px 8px;border-bottom:0.5px solid var(--border);display:flex;align-items:center;justify-content:space-between;position:sticky;top:0;background:var(--bg);z-index:20}
+.header h1{font-size:17px;font-weight:500}
+.header-date{font-size:12px;color:var(--text2)}
+.header-ver{font-size:10px;color:var(--text3);display:block;text-align:right;margin-top:1px}
+.header-icon-btn{background:none;border:none;cursor:pointer;color:var(--text2);font-size:20px;padding:5px;display:flex;align-items:center;border-radius:8px;min-width:32px;min-height:32px;justify-content:center}
+.header-icon-btn:active{background:var(--bg2)}
+
+/* ── Tab bar ── */
+.tabs{display:flex;border-bottom:0.5px solid var(--border);background:var(--bg);position:sticky;top:49px;z-index:20}
+.tab{flex:1;padding:9px 4px 7px;text-align:center;font-size:11px;color:var(--text2);cursor:pointer;border-bottom:2px solid transparent;transition:all .2s;user-select:none}
+.tab i{display:block;font-size:18px;margin-bottom:2px}
+.tab.active{color:var(--text);border-bottom-color:var(--text);font-weight:500}
+
+/* ── Screens ── */
+.screen{display:none;flex:1;flex-direction:column}
+.screen.active{display:flex}
+
+/* ══ CALENDAR ══ */
+.cal-wrap{display:flex;flex-direction:column;flex:1;overflow:hidden}
+.act-row{display:flex;justify-content:space-between;align-items:center;gap:8px;padding:10px 16px 0}
+.today-sum{font-size:12px;color:var(--text2);min-width:0;overflow:hidden;white-space:nowrap;text-overflow:ellipsis}
+.cal-actions{display:flex;gap:6px;flex-shrink:0}
+.act-btn{display:flex;align-items:center;gap:4px;padding:7px 13px;border:none;border-radius:var(--r);color:#fff;font-size:13px;font-weight:500;cursor:pointer;font-family:inherit;white-space:nowrap}
+.act-btn:active{opacity:.75}
+.act-btn.temp{background:var(--c-temp)}
+.act-btn.hl{background:var(--c-hl)}
+.cal-nav{display:flex;align-items:center;justify-content:space-between;padding:10px 16px 6px}
+.cal-nav-btn{background:none;border:none;cursor:pointer;color:var(--text);padding:5px 8px;font-size:18px;border-radius:8px}
+.cal-nav-btn:active{background:var(--bg2)}
+.cal-nav-label{font-size:14px;font-weight:500;display:flex;align-items:center;gap:4px;padding:4px 8px;border-radius:8px;transition:background .15s}
+.cal-nav-label:active{background:var(--bg3)}
+.cal-nav-label i{font-size:13px;color:var(--text3)}
+.today-btn{padding:4px 10px;border:0.5px solid var(--border2);border-radius:8px;background:none;color:var(--text2);font-size:12px;cursor:pointer;font-family:inherit;white-space:nowrap}
+.today-btn:active{background:var(--bg2)}
+
+/* ── Monthly ── */
+#view-month{padding:0}
+.cal-head{display:grid;grid-template-columns:repeat(7,1fr);text-align:center;margin-bottom:4px}
+.cal-dow{font-size:11px;color:var(--text2);padding:3px 0;font-weight:500}
+.cal-dow:first-child{color:var(--red)}
+.cal-dow:last-child{color:var(--blue)}
+.cal-body-month{display:grid;grid-template-columns:repeat(7,1fr);border-left:0.5px solid var(--border);border-top:0.5px solid var(--border)}
+.cal-cell{-webkit-touch-callout:none;-webkit-user-select:none;user-select:none;position:relative;height:var(--cal-cell-h,90px);border-radius:0;padding:3px 2px 2px;cursor:pointer;transition:background .15s;overflow:hidden;border-right:0.5px solid var(--border);border-bottom:0.5px solid var(--border)}
+.cal-cell:active{background:var(--bg2)}
+.cal-cell.today{box-shadow:inset 0 0 0 2px var(--today-frame)}
+.cal-cell.today .dnum{font-weight:500}
+.cal-cell.other .dnum{color:var(--text3)}
+.cal-cell.sun .dnum{color:var(--red)}
+.cal-cell.sat .dnum{color:var(--blue)}
+.dhead{display:flex;align-items:center;justify-content:space-between;gap:1px;margin-bottom:3px}
+.dnum{font-size:12px;text-align:center;min-width:18px;height:20px;display:flex;align-items:center;justify-content:center}
+.hc-badge,.hc-sp{flex-shrink:0;min-width:14px;height:14px}
+.hc-badge{box-sizing:border-box;border-radius:7px;border:1.3px solid;background:var(--bg);font-size:9px;line-height:11px;text-align:center;font-weight:500;padding:0 2px}
+.hc-badge.b{border-color:var(--c-cond);color:var(--c-cond)}
+.hc-badge.r{border-color:var(--c-hl);color:var(--c-hl)}
+.temp-pill{font-size:11px;line-height:1.3;border-radius:3px;padding:1px 2px;background:#fbe9cf;color:#7a4a08;font-weight:500;text-align:center;white-space:nowrap}
+.cal-cell.other .temp-pill,.cal-cell.other .hc-badge{opacity:.55}
+
+/* date jump */
+.date-jump-overlay{position:fixed;inset:0;z-index:200;display:flex;align-items:center;justify-content:center;background:rgba(0,0,0,.35);opacity:0;pointer-events:none;transition:opacity .15s}
+.date-jump-overlay.open{opacity:1;pointer-events:all}
+.date-jump-pop{background:var(--bg);border-radius:18px;width:min(300px,calc(100vw - 48px));box-sizing:border-box;overflow:hidden;transform:scale(.95);transition:transform .15s}
+.date-jump-inner{padding:22px 18px 18px;box-sizing:border-box}
+.date-jump-inner .form-input{width:100%;box-sizing:border-box;max-width:100%}
+.date-jump-overlay.open .date-jump-pop{transform:scale(1)}
+.date-jump-pop h3{font-size:15px;font-weight:500;margin-bottom:14px}
+
+/* ══ GRAPH ══ */
+.graph-screen{padding:12px 12px calc(16px + var(--safe-bottom));flex:1;overflow-y:auto}
+.period-row{display:flex;gap:8px;padding:0 4px}
+.period-btn{height:32px;padding:0 14px;border-radius:16px;font-size:13px;font-weight:500;background:none;border:1.5px solid var(--border2);cursor:pointer;color:var(--text2);font-family:inherit}
+.period-btn.active{background:var(--text);color:#fff;border-color:var(--text)}
+.period-btn:active{opacity:.7}
+#graph-chart{width:100%;margin-top:6px}
+#graph-chart svg{display:block;width:100%;height:auto}
+.legend{display:flex;flex-wrap:wrap;gap:6px 16px;padding:4px 6px 0;font-size:12px;color:var(--text2)}
+.legend span{display:inline-flex;align-items:center;gap:5px}
+.lg-bar{width:11px;height:11px;background:var(--c-hl);opacity:.75}
+.lg-line{width:18px;height:0;border-top:2px solid}
+.stats{display:grid;grid-template-columns:repeat(3,1fr);gap:8px;margin-top:14px}
+.stat{background:var(--bg2);border-radius:var(--r);padding:10px 8px;text-align:center}
+.stat-l{font-size:11px;color:var(--text2);margin-bottom:3px}
+.stat-v{font-size:18px;font-weight:500}
+.stat-v small{font-size:11px;font-weight:400;color:var(--text2)}
+.graph-hint{font-size:11px;color:var(--text3);text-align:center;margin-top:12px}
+
+/* ══ RECORD MODAL ══ */
+.modal-overlay{position:fixed;inset:0;background:rgba(0,0,0,.45);z-index:100;display:flex;align-items:flex-end;justify-content:center;opacity:0;pointer-events:none;transition:opacity .2s;touch-action:none}
+.modal-overlay.open{opacity:1;pointer-events:all}
+.modal-sheet{background:var(--bg);border-radius:20px 20px 0 0;width:100%;max-width:430px;box-sizing:border-box;transform:translateY(20px);transition:transform .2s;max-height:92vh;overflow:hidden}
+.modal-sheet-inner{padding:20px 16px calc(28px + var(--safe-bottom));overflow-y:auto;overflow-x:hidden;max-height:92vh;overscroll-behavior:contain;-webkit-overflow-scrolling:touch}
+.modal-overlay.open .modal-sheet{transform:translateY(0)}
+.modal-title{font-size:16px;font-weight:500;margin-bottom:6px}
+.form-label{font-size:12px;color:var(--text2);margin:16px 0 6px;display:flex;align-items:center;gap:6px}
+.form-label i{font-size:15px}
+.form-input{width:100%;border:0.5px solid var(--border2);border-radius:var(--r);padding:9px 12px;font-size:16px;font-family:inherit;background:var(--bg);color:var(--text);outline:none;box-sizing:border-box;-webkit-appearance:none;appearance:none;display:block}
+.form-input:focus{border-color:var(--text)}
+.temp-row{display:flex;gap:8px;align-items:center}
+.temp-row .form-input{flex:1;min-width:0;text-align:center;font-size:20px;padding:8px 12px}
+.temp-unit{font-size:14px;color:var(--text2);width:18px}
+.step-btn{width:44px;height:44px;flex-shrink:0;border:0.5px solid var(--border2);border-radius:var(--r);background:none;font-size:22px;cursor:pointer;color:var(--text);font-family:inherit;display:flex;align-items:center;justify-content:center}
+.step-btn:active{background:var(--bg2)}
+.cond-row{display:flex;gap:6px}
+.cond-btn{flex:1;height:46px;border:0.5px solid var(--border2);border-radius:var(--r);background:none;font-size:17px;cursor:pointer;color:var(--text);font-family:inherit}
+.cond-btn.on{background:var(--c-cond);border-color:var(--c-cond);color:#fff;font-weight:500}
+.cond-scale{display:flex;justify-content:space-between;font-size:11px;color:var(--text3);margin-top:4px}
+.hl-add{display:flex;gap:8px}
+.hl-add .form-input{flex:1;min-width:0;width:0}
+.hl-add-btn{display:flex;align-items:center;gap:4px;padding:0 16px;border:none;border-radius:var(--r);background:var(--c-hl);color:#fff;font-size:14px;font-weight:500;cursor:pointer;font-family:inherit;white-space:nowrap}
+.hl-add-btn:active{opacity:.75}
+.hl-chips{display:flex;flex-wrap:wrap;gap:6px;margin-top:10px;min-height:28px}
+.hl-chip{display:inline-flex;align-items:center;gap:4px;padding:4px 6px 4px 10px;border-radius:14px;background:#fdecea;color:#a32d2d;font-size:13px}
+.hl-chip button{background:none;border:none;color:#a32d2d;cursor:pointer;font-size:15px;line-height:1;display:flex;align-items:center;padding:2px}
+.hl-none{font-size:12px;color:var(--text3);padding-top:5px}
+.link-btn{background:none;border:none;color:var(--text2);font-size:12px;text-decoration:underline;cursor:pointer;font-family:inherit;padding:4px 0}
+.modal-actions{display:flex;gap:8px;margin-top:20px}
+.modal-actions button{flex:1;padding:11px;border-radius:var(--r);font-size:14px;cursor:pointer;font-family:inherit}
+.btn-cancel{background:none;border:0.5px solid var(--border2);color:var(--text2)}
+.btn-save{background:var(--text);border:none;color:#fff;font-weight:500}
+
+/* ══ SETTINGS ══ */
+.settings-section{margin-bottom:18px}
+.settings-section-title{font-size:11px;font-weight:500;color:var(--text2);letter-spacing:.05em;margin:12px 0 10px}
+.settings-btn{width:100%;padding:12px 14px;border:0.5px solid var(--border2);border-radius:var(--r);background:none;color:var(--text);font-size:14px;cursor:pointer;font-family:inherit;text-align:left;display:flex;align-items:center;gap:10px;margin-bottom:8px}
+.settings-btn:active{background:var(--bg2)}
+.settings-btn i{font-size:18px;color:var(--text2);flex-shrink:0}
+
+/* ══ TOAST ══ */
+.toast{position:fixed;left:50%;bottom:calc(24px + var(--safe-bottom));transform:translate(-50%,16px);width:calc(100% - 32px);max-width:398px;background:var(--text);color:#fff;border-radius:12px;padding:10px 14px;display:flex;align-items:center;justify-content:space-between;gap:12px;font-size:13px;line-height:1.5;opacity:0;pointer-events:none;transition:opacity .2s,transform .2s;z-index:300}
+.toast.show{opacity:1;transform:translate(-50%,0);pointer-events:all}
+.toast small{display:block;font-size:12px;opacity:.75}
+.toast button{background:none;border:none;color:#fff;font-size:13px;text-decoration:underline;cursor:pointer;font-family:inherit;padding:6px 4px;flex-shrink:0}
+</style>
+</head>
+<body>
+<div class="app">
+
+  <!-- Header -->
+  <div class="header">
+    <h1>体調管理</h1>
+    <div style="display:flex;align-items:center;gap:2px">
+      <button class="header-icon-btn" onclick="openSettings()" title="設定" aria-label="設定"><i class="ti ti-settings"></i></button>
+      <div style="text-align:right;margin-left:4px">
+        <span class="header-date" id="header-date"></span>
+        <span class="header-ver" id="header-ver"></span>
+      </div>
+    </div>
+  </div>
+
+  <!-- Tabs -->
+  <div class="tabs">
+    <div class="tab active" onclick="switchTab('calendar')"><i class="ti ti-calendar" aria-hidden="true"></i>カレンダー</div>
+    <div class="tab" onclick="switchTab('graph')"><i class="ti ti-chart-line" aria-hidden="true"></i>グラフ</div>
+  </div>
+
+  <!-- ══ CALENDAR SCREEN ══ -->
+  <div id="screen-calendar" class="screen active">
+    <div class="cal-wrap">
+      <div class="act-row">
+        <div class="today-sum" id="today-sum"></div>
+        <div class="cal-actions">
+          <button class="act-btn temp" onclick="openRecord(todayStr())"><i class="ti ti-thermometer" aria-hidden="true"></i>体温</button>
+          <button class="act-btn hl" onclick="quickHeadache()"><i class="ti ti-plus" aria-hidden="true"></i>頭痛</button>
+        </div>
+      </div>
+      <div class="cal-nav">
+        <button class="cal-nav-btn" onclick="navBack()" aria-label="前の月"><i class="ti ti-chevron-left"></i></button>
+        <div style="display:flex;align-items:center;gap:6px">
+          <span class="cal-nav-label" id="cal-nav-label" onclick="openDateJumper()" style="cursor:pointer" title="日付を選択"></span>
+          <button class="today-btn" onclick="jumpToToday()">今日</button>
+        </div>
+        <button class="cal-nav-btn" onclick="navFwd()" aria-label="次の月"><i class="ti ti-chevron-right"></i></button>
+      </div>
+      <div id="view-month" style="display:flex;flex-direction:column;flex:1;overflow-y:auto">
+        <div class="cal-head" style="padding:0 4px">
+          <div class="cal-dow">日</div><div class="cal-dow">月</div><div class="cal-dow">火</div>
+          <div class="cal-dow">水</div><div class="cal-dow">木</div><div class="cal-dow">金</div><div class="cal-dow">土</div>
+        </div>
+        <div class="cal-body-month" id="cal-body-month" style="margin:0 4px"></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ══ GRAPH SCREEN ══ -->
+  <div id="screen-graph" class="screen">
+    <div class="graph-screen">
+      <div class="period-row">
+        <button class="period-btn active" id="pbtn-7"  onclick="setGraphDays(7)">7日</button>
+        <button class="period-btn"        id="pbtn-30" onclick="setGraphDays(30)">30日</button>
+        <button class="period-btn"        id="pbtn-90" onclick="setGraphDays(90)">90日</button>
+      </div>
+      <div class="cal-nav" style="padding:10px 4px 2px">
+        <button class="cal-nav-btn" onclick="graphShift(-1)" aria-label="前の期間"><i class="ti ti-chevron-left"></i></button>
+        <div style="display:flex;align-items:center;gap:6px">
+          <span class="cal-nav-label" id="graph-range-label"></span>
+          <button class="today-btn" onclick="graphToLatest()">最新</button>
+        </div>
+        <button class="cal-nav-btn" onclick="graphShift(1)" aria-label="次の期間"><i class="ti ti-chevron-right"></i></button>
+      </div>
+      <div id="graph-chart"></div>
+      <div class="legend">
+        <span><i class="lg-bar"></i>頭痛の回数(棒)</span>
+        <span><i class="lg-line" style="border-color:var(--c-cond)"></i>体調(線)</span>
+        <span><i class="lg-line" style="border-color:var(--c-temp)"></i>体温(線)</span>
+      </div>
+      <div class="stats" id="graph-stats"></div>
+      <div class="graph-hint">グラフの日付をタップすると、その日の記録を開きます</div>
+    </div>
+  </div>
+
+</div><!-- .app -->
+
+<!-- ══ DATE JUMP MODAL ══ -->
+<div class="date-jump-overlay" id="date-jump-overlay" onclick="closeDateJumper()">
+  <div class="date-jump-pop" onclick="event.stopPropagation()">
+    <div class="date-jump-inner">
+      <h3>日付を選択</h3>
+      <input class="form-input" type="date" id="date-jump-input" style="margin-bottom:12px">
+      <div style="display:flex;gap:8px">
+        <button style="flex:1;padding:11px;border-radius:var(--r);font-size:14px;cursor:pointer;font-family:inherit;background:none;border:0.5px solid var(--border2);color:var(--text2)" onclick="closeDateJumper()">キャンセル</button>
+        <button style="flex:1;padding:11px;border-radius:var(--r);font-size:14px;cursor:pointer;font-family:inherit;background:var(--text);border:none;color:#fff;font-weight:500" onclick="confirmDateJump()">移動</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ══ RECORD MODAL (体温・体調・頭痛) ══ -->
+<div class="modal-overlay" id="rec-modal" onclick="if(event.target===this)closeRecord()">
+  <div class="modal-sheet">
+    <div class="modal-sheet-inner">
+      <div class="modal-title" id="rec-title"></div>
+
+      <div class="form-label"><i class="ti ti-thermometer" style="color:var(--c-temp)" aria-hidden="true"></i>朝の体温</div>
+      <div class="temp-row">
+        <button class="step-btn" onclick="stepTemp(-1)" aria-label="0.1度下げる">−</button>
+        <input class="form-input" type="text" inputmode="decimal" id="rec-temp" placeholder="36.5" autocomplete="off" oninput="onTempInput()" onblur="onTempBlur()">
+        <span class="temp-unit">℃</span>
+        <button class="step-btn" onclick="stepTemp(1)" aria-label="0.1度上げる">+</button>
+      </div>
+
+      <div class="form-label"><i class="ti ti-mood-smile" style="color:var(--c-cond)" aria-hidden="true"></i>体調(1 悪い 〜 5 良い)</div>
+      <div class="cond-row" id="rec-cond">
+        <button class="cond-btn" onclick="setCond(1)">1</button>
+        <button class="cond-btn" onclick="setCond(2)">2</button>
+        <button class="cond-btn" onclick="setCond(3)">3</button>
+        <button class="cond-btn" onclick="setCond(4)">4</button>
+        <button class="cond-btn" onclick="setCond(5)">5</button>
+      </div>
+      <div class="cond-scale"><span>悪い</span><span>良い</span></div>
+
+      <div class="form-label"><i class="ti ti-bolt" style="color:var(--c-hl)" aria-hidden="true"></i><span id="rec-hl-label">頭痛</span></div>
+      <div class="hl-add">
+        <input class="form-input" type="time" id="rec-hl-time">
+        <button class="hl-add-btn" onclick="addHeadacheFromSheet()"><i class="ti ti-plus" aria-hidden="true"></i>頭痛を追加</button>
+      </div>
+      <div class="hl-chips" id="rec-hl-chips"></div>
+
+      <div class="modal-actions">
+        <button class="btn-save" onclick="closeRecord()">閉じる</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ══ SETTINGS MODAL ══ -->
+<div class="modal-overlay" id="settings-modal" onclick="if(event.target===this)closeSettings()">
+  <div class="modal-sheet">
+    <div class="modal-sheet-inner">
+      <div class="modal-title">設定</div>
+      <div class="settings-section">
+        <div class="settings-section-title">データ管理</div>
+        <button class="settings-btn" onclick="exportData()"><i class="ti ti-download"></i>データをエクスポート（JSON）</button>
+        <button class="settings-btn" onclick="document.getElementById('import-file').click()"><i class="ti ti-upload"></i>データをインポート（JSON）</button>
+        <input type="file" id="import-file" accept=".json" style="display:none" onchange="importData(this)">
+      </div>
+      <div class="modal-actions" style="margin-top:4px">
+        <button class="btn-cancel" onclick="closeSettings()">閉じる</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ══ TOAST ══ -->
+<div class="toast" id="toast" role="status">
+  <span id="toast-msg"></span>
+  <button id="toast-undo" onclick="undoHeadache()">取り消し</button>
+</div>
+
+<script>
+/* ══════════════════════════
+   DATA
+   records = { 'YYYY-MM-DD': { temp: 36.5|null, cond: 1〜5|null, hl: ['HH:MM', ...] } }
+   頭痛の回数 = hl の件数
+══════════════════════════ */
+const VERSION = 'ver.1.0.0';
+const STORAGE_KEY = 'hc_records';
+const TODAY = new Date();
+TODAY.setHours(0,0,0,0);
+
+let records = {};
+try {
+  const o = JSON.parse(localStorage.getItem(STORAGE_KEY) || '{}');
+  if (o && typeof o === 'object' && !Array.isArray(o)) records = o;
+} catch(e) {}
+
+function persist() {
+  try { localStorage.setItem(STORAGE_KEY, JSON.stringify(records)); } catch(e) {}
+}
+function getRec(k) { return records[k] || null; }
+function hlOf(r) { return (r && Array.isArray(r.hl)) ? r.hl : []; }
+/* 記録を更新する。体温・体調・頭痛がすべて空になった日は削除する */
+function updateRec(k, fn) {
+  const r = records[k] || {};
+  r.temp = (typeof r.temp === 'number') ? r.temp : null;
+  r.cond = r.cond || null;
+  r.hl = hlOf(r).slice();
+  fn(r);
+  if (r.temp == null && !r.cond && !r.hl.length) delete records[k];
+  else records[k] = r;
+  persist();
+}
+
+/* ══════════════════════════
+   HELPERS
+══════════════════════════ */
+const DOW = ['日','月','火','水','木','金','土'];
+function pad(n) { return String(n).padStart(2,'0'); }
+function fmt(d) { return d.getFullYear()+'-'+pad(d.getMonth()+1)+'-'+pad(d.getDate()); }
+function parseDateStr(s) { const [y,m,d] = s.split('-').map(Number); return new Date(y, m-1, d); }
+function todayStr() { return fmt(new Date()); }
+function nowTime() { const n = new Date(); return pad(n.getHours())+':'+pad(n.getMinutes()); }
+function addDays(d, n) { const r = new Date(d); r.setDate(r.getDate() + n); return r; }
+function lockScroll()   { document.body.style.overflow = 'hidden'; }
+function unlockScroll() { document.body.style.overflow = ''; }
+
+/* ══════════════════════════
+   TAB SWITCHING
+══════════════════════════ */
+let activeTab = 'calendar';
+function switchTab(t) {
+  activeTab = t;
+  ['calendar','graph'].forEach((s,i) => {
+    document.getElementById('screen-'+s).classList.toggle('active', s===t);
+    document.querySelectorAll('.tab')[i].classList.toggle('active', s===t);
+  });
+  refreshAll();
+}
+function refreshAll() {
+  renderTodaySummary();
+  if (activeTab === 'calendar') renderMonth();
+  else renderGraph();
+}
+
+/* ══════════════════════════
+   MONTHLY VIEW
+══════════════════════════ */
+let calCursor = new Date(TODAY);
+let calCellH = 90;
+
+function navBack() { calCursor.setDate(1); calCursor.setMonth(calCursor.getMonth()-1); renderMonth(); }
+function navFwd()  { calCursor.setDate(1); calCursor.setMonth(calCursor.getMonth()+1); renderMonth(); }
+function jumpToToday() { calCursor = new Date(TODAY); renderMonth(); }
+
+function openDateJumper() {
+  const input = document.getElementById('date-jump-input');
+  input.value = fmt(calCursor);
+  document.getElementById('date-jump-overlay').classList.add('open');
+  setTimeout(() => input.focus(), 100);
+}
+function closeDateJumper() { document.getElementById('date-jump-overlay').classList.remove('open'); }
+function confirmDateJump() {
+  const val = document.getElementById('date-jump-input').value;
+  if (!val) return;
+  calCursor = parseDateStr(val);
+  closeDateJumper();
+  renderMonth();
+}
+
+/* 6週の月でもスクロールなしで収まるよう、画面の高さに合わせてセルの高さを決める(52〜100px) */
+function fitMonthCells(rows) {
+  const body = document.getElementById('cal-body-month');
+  if (body.offsetParent !== null) {
+    const top = body.getBoundingClientRect().top + window.scrollY;
+    const pb = parseFloat(getComputedStyle(document.querySelector('.app')).paddingBottom) || 0;
+    const avail = window.innerHeight - top - 4 - pb;
+    calCellH = Math.max(52, Math.min(100, Math.floor(avail / rows)));
+  }
+  body.style.setProperty('--cal-cell-h', calCellH + 'px');
+}
+
+function renderMonth() {
+  const y = calCursor.getFullYear(), m = calCursor.getMonth();
+  document.getElementById('cal-nav-label').innerHTML = y+'年'+(m+1)+'月 <i class="ti ti-chevron-down"></i>';
+  const fd = new Date(y, m, 1).getDay();
+  const ld = new Date(y, m+1, 0).getDate();
+  const pl = new Date(y, m, 0).getDate();
+  fitMonthCells(Math.ceil((fd+ld)/7));
+  const tStr = todayStr();
+  let h = '';
+  for (let i = 0; i < fd; i++) {
+    const d = pl - fd + 1 + i;
+    const pm = m === 0 ? 12 : m;
+    const py = m === 0 ? y-1 : y;
+    h += monthCell(d, py+'-'+pad(pm)+'-'+pad(d), true);
+  }
+  for (let d = 1; d <= ld; d++) {
+    const k = y+'-'+pad(m+1)+'-'+pad(d);
+    const dw = (fd+d-1)%7;
+    const cls = [tStr===k?'today':'', dw===0?'sun':dw===6?'sat':''].filter(Boolean).join(' ');
+    h += monthCell(d, k, false, cls);
+  }
+  const rem = (7-((fd+ld)%7))%7;
+  for (let i = 1; i <= rem; i++) {
+    const nm = m === 11 ? 1 : m+2;
+    const ny = m === 11 ? y+1 : y;
+    h += monthCell(i, ny+'-'+pad(nm)+'-'+pad(i), true);
+  }
+  document.getElementById('cal-body-month').innerHTML = h;
+}
+
+/* マス: 日付の左に体調(青い丸)、右に頭痛の回数(赤い丸)、下に体温 */
+function monthCell(d, k, other, extra='') {
+  const r = getRec(k);
+  const n = hlOf(r).length;
+  const left  = r && r.cond ? `<span class="hc-badge b" aria-label="体調${r.cond}">${r.cond}</span>` : `<span class="hc-sp"></span>`;
+  const right = n ? `<span class="hc-badge r" aria-label="頭痛${n}回">${n > 99 ? '99+' : n}</span>` : `<span class="hc-sp"></span>`;
+  const temp  = r && typeof r.temp === 'number' ? `<div class="temp-pill">${r.temp.toFixed(1)}</div>` : '';
+  const cls = ['cal-cell', other?'other':'', extra].filter(Boolean).join(' ');
+  return `<div class="${cls}" onclick="openRecord('${k}')">
+    <div class="dhead">${left}<div class="dnum">${d}</div>${right}</div>${temp}
+  </div>`;
+}
+
+/* 今日の記録のまとめ(ボタンの左に表示) */
+function renderTodaySummary() {
+  const r = getRec(todayStr());
+  const parts = [];
+  if (r && typeof r.temp === 'number') parts.push(r.temp.toFixed(1)+'℃');
+  if (r && r.cond) parts.push('体調'+r.cond);
+  const n = hlOf(r).length;
+  if (n) parts.push('頭痛'+n+'回');
+  document.getElementById('today-sum').textContent = parts.length ? '今日: ' + parts.join('・') : '今日はまだ未記録';
+}
+
+/* ══════════════════════════
+   RECORD SHEET (体温・体調・頭痛)
+══════════════════════════ */
+let recKey = null;
+
+function openRecord(k) {
+  recKey = k;
+  const d = parseDateStr(k);
+  document.getElementById('rec-title').textContent = (d.getMonth()+1)+'月'+d.getDate()+'日('+DOW[d.getDay()]+')の記録';
+  const r = getRec(k);
+  document.getElementById('rec-temp').value = r && typeof r.temp === 'number' ? r.temp.toFixed(1) : '';
+  document.getElementById('rec-hl-time').value = (k === todayStr()) ? nowTime() : '12:00';
+  renderRecord();
+  lockScroll();
+  document.getElementById('rec-modal').classList.add('open');
+}
+
+function closeRecord() {
+  document.getElementById('rec-modal').classList.remove('open');
+  unlockScroll();
+  recKey = null;
+  refreshAll();
+}
+
+/* 体調ボタンと頭痛の一覧を描き直す(体温の入力欄は入力中なので触らない) */
+function renderRecord() {
+  const r = getRec(recKey);
+  const cond = r ? r.cond : null;
+  document.querySelectorAll('#rec-cond .cond-btn').forEach((b,i) => b.classList.toggle('on', cond === i+1));
+  const hl = hlOf(r);
+  document.getElementById('rec-hl-label').textContent = '頭痛' + (hl.length ? '(' + hl.length + '回)' : '');
+  document.getElementById('rec-hl-chips').innerHTML = hl.length
+    ? hl.map((t,i) => `<span class="hl-chip">${t}<button onclick="delHeadache(${i})" aria-label="${t}の頭痛を削除"><i class="ti ti-x"></i></button></span>`).join('')
+    : `<span class="hl-none">この日の頭痛の記録はありません</span>`;
+}
+
+/* 全角数字・全角ピリオドを半角にそろえて数値にする */
+function parseTemp(s) {
+  const t = s.trim().replace(/[０-９]/g, c => String.fromCharCode(c.charCodeAt(0)-0xFEE0)).replace(/[．。，,]/g, '.');
+  if (t === '') return null;
+  const v = parseFloat(t);
+  return isFinite(v) ? v : NaN;
+}
+const TEMP_MIN = 34, TEMP_MAX = 42;
+
+function onTempInput() {
+  const v = parseTemp(document.getElementById('rec-temp').value);
+  if (v === null) { updateRec(recKey, r => { r.temp = null; }); }
+  else if (!isNaN(v) && v >= TEMP_MIN && v <= TEMP_MAX) { updateRec(recKey, r => { r.temp = Math.round(v*10)/10; }); }
+}
+function onTempBlur() {
+  const r = getRec(recKey);
+  document.getElementById('rec-temp').value = r && typeof r.temp === 'number' ? r.temp.toFixed(1) : '';
+}
+/* 未入力のときの + / − の起点: この日より前で最後に記録した体温。なければ36.5 */
+function baseTemp() {
+  const keys = Object.keys(records).filter(k => k < recKey && typeof records[k].temp === 'number').sort();
+  return keys.length ? records[keys[keys.length-1]].temp : 36.5;
+}
+function stepTemp(dir) {
+  const cur = parseTemp(document.getElementById('rec-temp').value);
+  const base = (cur === null || isNaN(cur)) ? baseTemp() : cur;
+  const nv = Math.min(TEMP_MAX, Math.max(TEMP_MIN, Math.round((base + dir*0.1)*10)/10));
+  document.getElementById('rec-temp').value = nv.toFixed(1);
+  updateRec(recKey, r => { r.temp = nv; });
+}
+
+function setCond(n) {
+  updateRec(recKey, r => { r.cond = (r.cond === n) ? null : n; });
+  renderRecord();
+}
+
+function addHeadacheFromSheet() {
+  const t = document.getElementById('rec-hl-time').value || nowTime();
+  updateRec(recKey, r => { r.hl.push(t); r.hl.sort(); });
+  renderRecord();
+}
+function delHeadache(i) {
+  updateRec(recKey, r => { r.hl.splice(i, 1); });
+  renderRecord();
+}
+
+/* ══════════════════════════
+   頭痛ボタン(ヘッダー): 押すと今日の分を即記録
+══════════════════════════ */
+let lastAdded = null, toastTimer = null;
+
+function quickHeadache() {
+  const k = todayStr(), t = nowTime();
+  updateRec(k, r => { r.hl.push(t); r.hl.sort(); });
+  lastAdded = { k, t };
+  showToast('頭痛を記録 ' + t, '今日 ' + hlOf(getRec(k)).length + '回目', true);
+  refreshAll();
+}
+function undoHeadache() {
+  if (!lastAdded) return;
+  const { k, t } = lastAdded;
+  updateRec(k, r => { const i = r.hl.lastIndexOf(t); if (i >= 0) r.hl.splice(i, 1); });
+  lastAdded = null;
+  hideToast();
+  refreshAll();
+}
+function showToast(msg, sub, undo) {
+  document.getElementById('toast-msg').innerHTML = msg + (sub ? '<small>' + sub + '</small>' : '');
+  document.getElementById('toast-undo').style.display = undo ? '' : 'none';
+  const el = document.getElementById('toast');
+  el.classList.add('show');
+  clearTimeout(toastTimer);
+  toastTimer = setTimeout(hideToast, 4500);
+}
+function hideToast() { document.getElementById('toast').classList.remove('show'); }
+
+/* ══════════════════════════
+   GRAPH (頭痛=棒グラフ / 体温・体調=折れ線)
+══════════════════════════ */
+let graphDays = 7;
+let graphEnd = new Date(TODAY);
+
+function setGraphDays(n) {
+  graphDays = n;
+  [7,30,90].forEach(x => document.getElementById('pbtn-'+x).classList.toggle('active', x===n));
+  renderGraph();
+}
+function graphShift(dir) {
+  const e = addDays(graphEnd, dir * graphDays);
+  graphEnd = e > TODAY ? new Date(TODAY) : e;
+  renderGraph();
+}
+function graphToLatest() { graphEnd = new Date(TODAY); renderGraph(); }
+
+function renderGraph() {
+  const wrap = document.getElementById('graph-chart');
+  const W = Math.floor(wrap.clientWidth);
+  if (W < 100) return;                         // 画面が非表示のときは描かない
+  const n = graphDays, H = 290;
+  const ml = 40, mr = 34, mt = 28, mb = 30;
+  const pw = W - ml - mr, ph = H - mt - mb;
+
+  const days = [];
+  for (let i = 0; i < n; i++) {
+    const d = addDays(graphEnd, i - (n-1));
+    const k = fmt(d), r = getRec(k);
+    days.push({ k, d, temp: r && typeof r.temp === 'number' ? Math.round(r.temp*10) : null,
+                cond: r && r.cond ? r.cond : null, hl: hlOf(r).length });
+  }
+  const s0 = days[0].d, s1 = days[n-1].d;
+  document.getElementById('graph-range-label').textContent =
+    (s0.getMonth()+1)+'/'+s0.getDate()+' 〜 '+(s1.getMonth()+1)+'/'+s1.getDate();
+
+  /* 体温の軸: 表示期間の最低〜最高に、上下0.1℃の余白を足して0.1℃単位で決める(最低でも幅0.5℃) */
+  const tv = days.filter(x => x.temp !== null).map(x => x.temp);
+  let lo, hi;
+  if (tv.length) { lo = Math.min(...tv) - 1; hi = Math.max(...tv) + 1; }
+  else { lo = 355; hi = 375; }
+  while (hi - lo < 5) { hi += 1; if (hi - lo < 5) lo -= 1; }
+  const yT = t => mt + ph - (t - lo) / (hi - lo) * ph;
+
+  /* 右軸: 体調(1〜5)と頭痛の回数。回数が5を超えたら広げる */
+  const maxHl = Math.max(0, ...days.map(x => x.hl));
+  const rStep = maxHl <= 10 ? 1 : Math.ceil(maxHl / 5);
+  const rMax = Math.max(5, Math.ceil(maxHl / rStep) * rStep);
+  const yR = v => mt + ph - v / rMax * ph;
+
+  const slot = pw / n, xc = i => ml + slot * (i + 0.5);
+  const bw = Math.min(30, slot * 0.6);
+
+  let g = '';
+  /* 左軸の目盛り線(0.1℃ごと。幅が2.0℃を超えるときはラベルの刻みに合わせる) */
+  const span = hi - lo;
+  const lblStep = [1,2,5,10,20].find(s => span / s <= 9) || 20;
+  const gridStep = span <= 20 ? 1 : lblStep;
+  for (let t = Math.ceil(lo / gridStep) * gridStep; t <= hi; t += gridStep) {
+    g += `<line x1="${ml}" y1="${yT(t).toFixed(1)}" x2="${W-mr}" y2="${yT(t).toFixed(1)}" stroke="rgba(0,0,0,0.09)" stroke-width="0.5"/>`;
+  }
+  for (let t = Math.ceil(lo / lblStep) * lblStep; t <= hi; t += lblStep) {
+    g += `<text x="${ml-6}" y="${(yT(t)+4).toFixed(1)}" text-anchor="end" font-size="11" fill="#BA7517">${(t/10).toFixed(1)}</text>`;
+  }
+  g += `<text x="${ml-6}" y="14" text-anchor="end" font-size="11" fill="#BA7517">体温℃</text>`;
+  /* 右軸の目盛り(線なし) */
+  g += `<line x1="${W-mr}" y1="${mt}" x2="${W-mr}" y2="${mt+ph}" stroke="rgba(0,0,0,0.18)" stroke-width="0.8"/>`;
+  for (let v = 0; v <= rMax; v += rStep) {
+    g += `<line x1="${W-mr}" y1="${yR(v).toFixed(1)}" x2="${W-mr+4}" y2="${yR(v).toFixed(1)}" stroke="rgba(0,0,0,0.18)" stroke-width="0.8"/>`;
+    g += `<text x="${W-mr+8}" y="${(yR(v)+4).toFixed(1)}" font-size="11" fill="#666">${v}</text>`;
+  }
+  g += `<text x="${W-2}" y="14" text-anchor="end" font-size="11" fill="#666">段階/回</text>`;
+  /* 横軸 */
+  g += `<line x1="${ml}" y1="${mt+ph}" x2="${W-mr}" y2="${mt+ph}" stroke="rgba(0,0,0,0.18)" stroke-width="0.8"/>`;
+  const xStep = n <= 7 ? 1 : n <= 31 ? 5 : 15;
+  days.forEach((x, i) => {
+    if (i % xStep === 0) g += `<text x="${xc(i).toFixed(1)}" y="${mt+ph+18}" text-anchor="middle" font-size="11" fill="#666">${x.d.getMonth()+1}/${x.d.getDate()}</text>`;
+  });
+  /* 頭痛の棒 */
+  days.forEach((x, i) => {
+    if (x.hl > 0) {
+      const y = yR(x.hl);
+      g += `<rect x="${(xc(i)-bw/2).toFixed(1)}" y="${y.toFixed(1)}" width="${bw.toFixed(1)}" height="${(mt+ph-y).toFixed(1)}" fill="#e24b4a" opacity="0.75"/>`;
+    }
+  });
+  /* 折れ線 */
+  const dotR = n <= 7 ? 3.5 : n <= 31 ? 2.5 : 1.8;
+  const line = (vals, color) => {
+    const pts = vals.map((v,i) => v === null ? null : [xc(i), v]).filter(Boolean);
+    let s = '';
+    if (pts.length > 1) s += `<polyline points="${pts.map(p => p[0].toFixed(1)+','+p[1].toFixed(1)).join(' ')}" fill="none" stroke="${color}" stroke-width="2" stroke-linejoin="round"/>`;
+    pts.forEach(p => { s += `<circle cx="${p[0].toFixed(1)}" cy="${p[1].toFixed(1)}" r="${dotR}" fill="${color}"/>`; });
+    return s;
+  };
+  g += line(days.map(x => x.cond === null ? null : yR(x.cond)), '#378add');
+  g += line(days.map(x => x.temp === null ? null : yT(x.temp)), '#BA7517');
+  /* タップで、その日の記録シートを開く */
+  days.forEach((x, i) => {
+    g += `<rect x="${(ml + slot*i).toFixed(1)}" y="${mt}" width="${slot.toFixed(1)}" height="${ph}" fill="transparent" style="cursor:pointer" onclick="openRecord('${x.k}')"/>`;
+  });
+
+  wrap.innerHTML = `<svg viewBox="0 0 ${W} ${H}" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="体温と体調の折れ線、頭痛回数の棒グラフ">${g}</svg>`;
+
+  /* 期間のまとめ */
+  const cv = days.filter(x => x.cond !== null).map(x => x.cond);
+  const avg = a => a.reduce((s,v) => s+v, 0) / a.length;
+  const totalHl = days.reduce((s,x) => s + x.hl, 0);
+  document.getElementById('graph-stats').innerHTML =
+    stat('平均体温', tv.length ? (avg(tv)/10).toFixed(2) : '-', tv.length ? '℃' : '') +
+    stat('平均体調', cv.length ? avg(cv).toFixed(1) : '-', cv.length ? '/ 5' : '') +
+    stat('頭痛の合計', totalHl, '回');
+}
+function stat(label, val, unit) {
+  return `<div class="stat"><div class="stat-l">${label}</div><div class="stat-v">${val}${unit ? ' <small>'+unit+'</small>' : ''}</div></div>`;
+}
+
+/* ══════════════════════════
+   SETTINGS / EXPORT / IMPORT
+══════════════════════════ */
+function openSettings() {
+  lockScroll();
+  document.getElementById('settings-modal').classList.add('open');
+}
+function closeSettings() {
+  document.getElementById('settings-modal').classList.remove('open');
+  unlockScroll();
+}
+function exportData() {
+  const data = { app: 'health_log', records, exportedAt: new Date().toISOString() };
+  const blob = new Blob([JSON.stringify(data, null, 2)], { type: 'application/json' });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url;
+  a.download = 'health_log-backup-' + todayStr() + '.json';
+  a.click();
+  URL.revokeObjectURL(url);
+}
+function importData(input) {
+  const file = input.files[0];
+  if (!file) return;
+  const reader = new FileReader();
+  reader.onload = (e) => {
+    try {
+      const data = JSON.parse(e.target.result);
+      if (!data.records || typeof data.records !== 'object' || Array.isArray(data.records)) throw new Error('bad');
+      if (!confirm('現在のデータを上書きしてインポートしますか？\n※この操作は元に戻せません')) return;
+      records = data.records;
+      persist();
+      refreshAll();
+      closeSettings();
+      alert('インポートが完了しました');
+    } catch(err) {
+      alert('ファイルの読み込みに失敗しました。正しいバックアップファイルか確認してください。');
+    }
+  };
+  reader.readAsText(file);
+  input.value = '';
+}
+
+/* ══════════════════════════
+   INIT
+══════════════════════════ */
+document.getElementById('header-date').textContent =
+  (TODAY.getMonth()+1)+'/'+TODAY.getDate()+'('+DOW[TODAY.getDay()]+')';
+document.getElementById('header-ver').textContent = VERSION;
+refreshAll();
+
+/* 幅が変わったとき・向きが変わったとき・フォント読み込み後に描き直す。
+   高さだけの変化(iOSのツールバーの出入り)では測り直さない: スクロール中に表示がずれるため */
+let lastW = window.innerWidth;
+window.addEventListener('resize', () => {
+  if (window.innerWidth === lastW) return;
+  lastW = window.innerWidth;
+  refreshAll();
+});
+window.addEventListener('orientationchange', () => setTimeout(refreshAll, 300));
+if (document.fonts && document.fonts.ready) document.fonts.ready.then(refreshAll);
+
+/* ══════════════════════════
+   SWIPE NAVIGATION (左右スワイプで月・期間を移動)
+══════════════════════════ */
+(function() {
+  let startX = 0, startY = 0;
+  const THRESHOLD = 50;
+  const bind = (el, onLeft, onRight) => {
+    el.addEventListener('touchstart', e => { startX = e.touches[0].clientX; startY = e.touches[0].clientY; }, { passive: true });
+    el.addEventListener('touchend', e => {
+      const dx = e.changedTouches[0].clientX - startX;
+      const dy = e.changedTouches[0].clientY - startY;
+      if (Math.abs(dx) < THRESHOLD || Math.abs(dy) > Math.abs(dx)) return;
+      if (dx < 0) onLeft(); else onRight();
+    }, { passive: true });
+  };
+  bind(document.querySelector('.cal-wrap'), navFwd, navBack);
+  bind(document.querySelector('.graph-screen'), () => graphShift(1), () => graphShift(-1));
+})();
+</script>
+</body>
+</html>
